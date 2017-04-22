@@ -14,6 +14,7 @@
 
 //! Elliptic curve operations on Curve25519.
 
+use {bssl, c, error};
 
 // Keep this in sync with `fe` in curve25519/internal.h.
 pub type Elem = [i32; ELEM_LIMBS];
@@ -37,6 +38,24 @@ impl ExtPoint {
             z: [0; ELEM_LIMBS],
             t: [0; ELEM_LIMBS],
         }
+    }
+
+    pub fn from_bytes_vartime(bytes: &[u8; ELEM_LEN])
+                              -> Result<Self, error::Unspecified> {
+        let mut point = Self::new_at_infinity();
+
+        try!(bssl::map_result(unsafe {
+            GFp_x25519_ge_frombytes_vartime(&mut point, bytes)
+        }));
+
+        Ok(point)
+    }
+
+    pub fn to_bytes(&self) -> [u8; ELEM_LEN] {
+        let mut bytes = [0u8; ELEM_LEN];
+        unsafe { GFp_ge_p3_tobytes(&mut bytes, self); }
+
+        bytes
     }
 
     pub fn invert_vartime(&mut self) {
@@ -63,4 +82,18 @@ impl Point {
             z: [0; ELEM_LIMBS],
         }
     }
+
+    pub fn to_bytes(&self) -> [u8; ELEM_LEN] {
+        let mut bytes = [0u8; ELEM_LEN];
+        unsafe { GFp_x25519_ge_tobytes(&mut bytes, self); }
+
+        bytes
+    }
+}
+
+extern {
+    fn GFp_ge_p3_tobytes(s: &mut [u8; ELEM_LEN], h: &ExtPoint);
+    fn GFp_x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &[u8; ELEM_LEN])
+                                       -> c::int;
+    fn GFp_x25519_ge_tobytes(s: &mut [u8; ELEM_LEN], h: &Point);
 }
