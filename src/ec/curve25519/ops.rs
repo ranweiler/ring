@@ -52,10 +52,7 @@ impl ExtPoint {
     }
 
     pub fn to_bytes(&self) -> [u8; ELEM_LEN] {
-        let mut bytes = [0u8; ELEM_LEN];
-        unsafe { GFp_ge_p3_tobytes(&mut bytes, self); }
-
-        bytes
+        point_to_bytes(&self.x, &self.y, &self.z)
     }
 
     pub fn invert_vartime(&mut self) {
@@ -84,16 +81,32 @@ impl Point {
     }
 
     pub fn to_bytes(&self) -> [u8; ELEM_LEN] {
-        let mut bytes = [0u8; ELEM_LEN];
-        unsafe { GFp_x25519_ge_tobytes(&mut bytes, self); }
-
-        bytes
+        point_to_bytes(&self.x, &self.y, &self.z)
     }
 }
 
+fn point_to_bytes(x: &Elem, y: &Elem, z: &Elem) -> [u8; ELEM_LEN] {
+    let mut recip = [0; ELEM_LIMBS];
+    let mut x_over_z = [0; ELEM_LIMBS];
+    let mut y_over_z = [0; ELEM_LIMBS];
+    let mut bytes = [0; ELEM_LEN];
+
+    unsafe {
+        GFp_fe_invert(&mut recip, z);
+        GFp_fe_mul(&mut x_over_z, x, &recip);
+        GFp_fe_mul(&mut y_over_z, y, &recip);
+        GFp_fe_tobytes(&mut bytes, &y_over_z);
+    }
+    bytes[31] ^= unsafe { GFp_fe_isnegative(&x_over_z) << 7 };
+
+    bytes
+}
+
 extern {
-    fn GFp_ge_p3_tobytes(s: &mut [u8; ELEM_LEN], h: &ExtPoint);
+    fn GFp_fe_invert(out: &mut Elem, z: &Elem);
+    fn GFp_fe_isnegative(elem: &Elem) -> u8;
+    fn GFp_fe_mul(h: &mut Elem, f: &Elem, g: &Elem);
+    fn GFp_fe_tobytes(bytes: &mut [u8; ELEM_LEN], elem: &Elem);
     fn GFp_x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &[u8; ELEM_LEN])
                                        -> c::int;
-    fn GFp_x25519_ge_tobytes(s: &mut [u8; ELEM_LEN], h: &Point);
 }
