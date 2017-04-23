@@ -113,7 +113,7 @@ impl<'a> Ed25519KeyPair {
         Ed25519KeyPair {
             private_scalar: scalar,
             private_prefix: prefix,
-            public_key: a.to_bytes(),
+            public_key: a.encode(),
         }
     }
 
@@ -145,7 +145,7 @@ impl<'a> Ed25519KeyPair {
             unsafe {
                 GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
             }
-            signature_r.copy_from_slice(&r.to_bytes());
+            signature_r.copy_from_slice(&r.encode());
             let hram_digest = eddsa_digest(signature_r, &self.public_key, msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
@@ -189,7 +189,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
             return Err(error::Unspecified);
         }
 
-        let mut a = try!(ExtPoint::from_bytes_vartime(public_key));
+        let mut a = try!(ExtPoint::decode_vartime(public_key));
         a.invert_vartime();
 
         let h_digest =
@@ -200,7 +200,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         unsafe {
             GFp_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s)
         };
-        let r_check = r.to_bytes();
+        let r_check = r.encode();
         if signature_r != r_check {
             return Err(error::Unspecified);
         }

@@ -19,6 +19,8 @@ use {bssl, c, error};
 // Keep this in sync with `fe` in curve25519/internal.h.
 pub type Elem = [i32; ELEM_LIMBS];
 const ELEM_LIMBS: usize = 10;
+
+type EncodedPoint = [u8; ELEM_LEN];
 pub const ELEM_LEN: usize = 32;
 
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
@@ -40,19 +42,19 @@ impl ExtPoint {
         }
     }
 
-    pub fn from_bytes_vartime(bytes: &[u8; ELEM_LEN])
-                              -> Result<Self, error::Unspecified> {
+    pub fn decode_vartime(encoded: &EncodedPoint)
+                          -> Result<Self, error::Unspecified> {
         let mut point = Self::new_at_infinity();
 
         try!(bssl::map_result(unsafe {
-            GFp_x25519_ge_frombytes_vartime(&mut point, bytes)
+            GFp_x25519_ge_frombytes_vartime(&mut point, encoded)
         }));
 
         Ok(point)
     }
 
-    pub fn to_bytes(&self) -> [u8; ELEM_LEN] {
-        point_to_bytes(&self.x, &self.y, &self.z)
+    pub fn encode(&self) -> EncodedPoint {
+        encode_point(&self.x, &self.y, &self.z)
     }
 
     pub fn invert_vartime(&mut self) {
@@ -80,12 +82,12 @@ impl Point {
         }
     }
 
-    pub fn to_bytes(&self) -> [u8; ELEM_LEN] {
-        point_to_bytes(&self.x, &self.y, &self.z)
+    pub fn encode(&self) -> EncodedPoint {
+        encode_point(&self.x, &self.y, &self.z)
     }
 }
 
-fn point_to_bytes(x: &Elem, y: &Elem, z: &Elem) -> [u8; ELEM_LEN] {
+fn encode_point(x: &Elem, y: &Elem, z: &Elem) -> [u8; ELEM_LEN] {
     let mut recip = [0; ELEM_LIMBS];
     let mut x_over_z = [0; ELEM_LIMBS];
     let mut y_over_z = [0; ELEM_LIMBS];
