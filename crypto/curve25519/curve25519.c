@@ -230,6 +230,9 @@ static void fe_1(fe h) {
   h[0] = 1;
 }
 
+/* Prototype to avoid -Wmissing-prototypes warnings. */
+void GFp_fe_add(fe h, const fe f, const fe g);
+
 /* h = f + g
  * Can overlap h with f or g.
  *
@@ -239,12 +242,15 @@ static void fe_1(fe h) {
  *
  * Postconditions:
  *    |h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc. */
-static void fe_add(fe h, const fe f, const fe g) {
+void GFp_fe_add(fe h, const fe f, const fe g) {
   unsigned i;
   for (i = 0; i < 10; i++) {
     h[i] = f[i] + g[i];
   }
 }
+
+/* Prototype to avoid -Wmissing-prototypes warnings. */
+void GFp_fe_sub(fe h, const fe f, const fe g);
 
 /* h = f - g
  * Can overlap h with f or g.
@@ -255,7 +261,7 @@ static void fe_add(fe h, const fe f, const fe g) {
  *
  * Postconditions:
  *    |h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc. */
-static void fe_sub(fe h, const fe f, const fe g) {
+void GFp_fe_sub(fe h, const fe f, const fe g) {
   unsigned i;
   for (i = 0; i < 10; i++) {
     h[i] = f[i] - g[i];
@@ -978,8 +984,8 @@ int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   fe_1(h->Z);
   fe_sq(u, h->Y);
   GFp_fe_mul(v, u, d);
-  fe_sub(u, u, h->Z); /* u = y^2-1 */
-  fe_add(v, v, h->Z); /* v = dy^2+1 */
+  GFp_fe_sub(u, u, h->Z); /* u = y^2-1 */
+  GFp_fe_add(v, v, h->Z); /* v = dy^2+1 */
 
   fe_sq(v3, v);
   GFp_fe_mul(v3, v3, v); /* v3 = v^3 */
@@ -993,9 +999,9 @@ int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
 
   fe_sq(vxx, h->X);
   GFp_fe_mul(vxx, vxx, v);
-  fe_sub(check, vxx, u); /* vx^2-u */
+  GFp_fe_sub(check, vxx, u); /* vx^2-u */
   if (fe_isnonzero(check)) {
-    fe_add(check, vxx, u); /* vx^2+u */
+    GFp_fe_add(check, vxx, u); /* vx^2+u */
     if (fe_isnonzero(check)) {
       return 0;
     }
@@ -1041,8 +1047,8 @@ static const fe d2 = {-21827239, -5839606,  -30745221, 13898782, 229458,
 
 /* r = p */
 static void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p) {
-  fe_add(r->YplusX, p->Y, p->X);
-  fe_sub(r->YminusX, p->Y, p->X);
+  GFp_fe_add(r->YplusX, p->Y, p->X);
+  GFp_fe_sub(r->YminusX, p->Y, p->X);
   fe_copy(r->Z, p->Z);
   GFp_fe_mul(r->T2d, p->T, d2);
 }
@@ -1069,12 +1075,12 @@ static void ge_p2_dbl(ge_p1p1 *r, const ge_p2 *p) {
   fe_sq(r->X, p->X);
   fe_sq(r->Z, p->Y);
   fe_sq2(r->T, p->Z);
-  fe_add(r->Y, p->X, p->Y);
+  GFp_fe_add(r->Y, p->X, p->Y);
   fe_sq(t0, r->Y);
-  fe_add(r->Y, r->Z, r->X);
-  fe_sub(r->Z, r->Z, r->X);
-  fe_sub(r->X, t0, r->Y);
-  fe_sub(r->T, r->T, r->Z);
+  GFp_fe_add(r->Y, r->Z, r->X);
+  GFp_fe_sub(r->Z, r->Z, r->X);
+  GFp_fe_sub(r->X, t0, r->Y);
+  GFp_fe_sub(r->T, r->T, r->Z);
 }
 
 /* r = 2 * p */
@@ -1088,66 +1094,66 @@ static void ge_p3_dbl(ge_p1p1 *r, const ge_p3 *p) {
 static void ge_madd(ge_p1p1 *r, const ge_p3 *p, const ge_precomp *q) {
   fe t0;
 
-  fe_add(r->X, p->Y, p->X);
-  fe_sub(r->Y, p->Y, p->X);
+  GFp_fe_add(r->X, p->Y, p->X);
+  GFp_fe_sub(r->Y, p->Y, p->X);
   GFp_fe_mul(r->Z, r->X, q->yplusx);
   GFp_fe_mul(r->Y, r->Y, q->yminusx);
   GFp_fe_mul(r->T, q->xy2d, p->T);
-  fe_add(t0, p->Z, p->Z);
-  fe_sub(r->X, r->Z, r->Y);
-  fe_add(r->Y, r->Z, r->Y);
-  fe_add(r->Z, t0, r->T);
-  fe_sub(r->T, t0, r->T);
+  GFp_fe_add(t0, p->Z, p->Z);
+  GFp_fe_sub(r->X, r->Z, r->Y);
+  GFp_fe_add(r->Y, r->Z, r->Y);
+  GFp_fe_add(r->Z, t0, r->T);
+  GFp_fe_sub(r->T, t0, r->T);
 }
 
 /* r = p - q */
 static void ge_msub(ge_p1p1 *r, const ge_p3 *p, const ge_precomp *q) {
   fe t0;
 
-  fe_add(r->X, p->Y, p->X);
-  fe_sub(r->Y, p->Y, p->X);
+  GFp_fe_add(r->X, p->Y, p->X);
+  GFp_fe_sub(r->Y, p->Y, p->X);
   GFp_fe_mul(r->Z, r->X, q->yminusx);
   GFp_fe_mul(r->Y, r->Y, q->yplusx);
   GFp_fe_mul(r->T, q->xy2d, p->T);
-  fe_add(t0, p->Z, p->Z);
-  fe_sub(r->X, r->Z, r->Y);
-  fe_add(r->Y, r->Z, r->Y);
-  fe_sub(r->Z, t0, r->T);
-  fe_add(r->T, t0, r->T);
+  GFp_fe_add(t0, p->Z, p->Z);
+  GFp_fe_sub(r->X, r->Z, r->Y);
+  GFp_fe_add(r->Y, r->Z, r->Y);
+  GFp_fe_sub(r->Z, t0, r->T);
+  GFp_fe_add(r->T, t0, r->T);
 }
 
 /* r = p + q */
 static void x25519_ge_add(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
   fe t0;
 
-  fe_add(r->X, p->Y, p->X);
-  fe_sub(r->Y, p->Y, p->X);
+  GFp_fe_add(r->X, p->Y, p->X);
+  GFp_fe_sub(r->Y, p->Y, p->X);
   GFp_fe_mul(r->Z, r->X, q->YplusX);
   GFp_fe_mul(r->Y, r->Y, q->YminusX);
   GFp_fe_mul(r->T, q->T2d, p->T);
   GFp_fe_mul(r->X, p->Z, q->Z);
-  fe_add(t0, r->X, r->X);
-  fe_sub(r->X, r->Z, r->Y);
-  fe_add(r->Y, r->Z, r->Y);
-  fe_add(r->Z, t0, r->T);
-  fe_sub(r->T, t0, r->T);
+  GFp_fe_add(t0, r->X, r->X);
+  GFp_fe_sub(r->X, r->Z, r->Y);
+  GFp_fe_add(r->Y, r->Z, r->Y);
+  GFp_fe_add(r->Z, t0, r->T);
+  GFp_fe_sub(r->T, t0, r->T);
 }
 
 /* r = p - q */
 static void x25519_ge_sub(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
   fe t0;
 
-  fe_add(r->X, p->Y, p->X);
-  fe_sub(r->Y, p->Y, p->X);
+  GFp_fe_add(r->X, p->Y, p->X);
+  GFp_fe_sub(r->Y, p->Y, p->X);
   GFp_fe_mul(r->Z, r->X, q->YminusX);
   GFp_fe_mul(r->Y, r->Y, q->YplusX);
   GFp_fe_mul(r->T, q->T2d, p->T);
   GFp_fe_mul(r->X, p->Z, q->Z);
-  fe_add(t0, r->X, r->X);
-  fe_sub(r->X, r->Z, r->Y);
-  fe_add(r->Y, r->Z, r->Y);
-  fe_sub(r->Z, t0, r->T);
-  fe_add(r->T, t0, r->T);
+  GFp_fe_add(t0, r->X, r->X);
+  GFp_fe_sub(r->X, r->Z, r->Y);
+  GFp_fe_add(r->Y, r->Z, r->Y);
+  GFp_fe_sub(r->Z, t0, r->T);
+  GFp_fe_add(r->T, t0, r->T);
 }
 
 static uint8_t equal(signed char b, signed char c) {
@@ -1182,8 +1188,8 @@ static void x25519_ge_scalarmult_small_precomp(
     fe_frombytes(y, bytes + 32);
 
     ge_precomp *out = &multiples[i];
-    fe_add(out->yplusx, y, x);
-    fe_sub(out->yminusx, y, x);
+    GFp_fe_add(out->yplusx, y, x);
+    GFp_fe_sub(out->yminusx, y, x);
     GFp_fe_mul(out->xy2d, x, y);
     GFp_fe_mul(out->xy2d, out->xy2d, d2);
   }
@@ -4637,22 +4643,22 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
     fe_cswap(x2, x3, swap);
     fe_cswap(z2, z3, swap);
     swap = b;
-    fe_sub(tmp0, x3, z3);
-    fe_sub(tmp1, x2, z2);
-    fe_add(x2, x2, z2);
-    fe_add(z2, x3, z3);
+    GFp_fe_sub(tmp0, x3, z3);
+    GFp_fe_sub(tmp1, x2, z2);
+    GFp_fe_add(x2, x2, z2);
+    GFp_fe_add(z2, x3, z3);
     GFp_fe_mul(z3, tmp0, x2);
     GFp_fe_mul(z2, z2, tmp1);
     fe_sq(tmp0, tmp1);
     fe_sq(tmp1, x2);
-    fe_add(x3, z3, z2);
-    fe_sub(z2, z3, z2);
+    GFp_fe_add(x3, z3, z2);
+    GFp_fe_sub(z2, z3, z2);
     GFp_fe_mul(x2, tmp1, tmp0);
-    fe_sub(tmp1, tmp1, tmp0);
+    GFp_fe_sub(tmp1, tmp1, tmp0);
     fe_sq(z2, z2);
     GFp_fe_mul121666(z3, tmp1);
     fe_sq(x3, x3);
-    fe_add(tmp0, tmp0, z3);
+    GFp_fe_add(tmp0, tmp0, z3);
     GFp_fe_mul(z3, x1, z2);
     GFp_fe_mul(z2, tmp1, tmp0);
   }
@@ -4674,54 +4680,6 @@ void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 #endif
 
   x25519_scalar_mult_generic(out, scalar, point);
-}
-
-#endif  /* BORINGSSL_X25519_X86_64 */
-
-
-/* Prototypes to avoid -Wmissing-prototypes warnings. */
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                    const uint8_t private_key[32]);
-
-#if defined(BORINGSSL_X25519_X86_64)
-
-/* When |BORINGSSL_X25519_X86_64| is set, base point multiplication is done with
- * the Montgomery ladder because it's faster. Otherwise it's done using the
- * Ed25519 tables. */
-
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                    const uint8_t private_key[32]) {
-  static const uint8_t kMongomeryBasePoint[32] = {9};
-  GFp_x25519_scalar_mult(out_public_value, private_key, kMongomeryBasePoint);
-}
-
-#else
-
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                    const uint8_t private_key[32]) {
-#if defined(BORINGSSL_X25519_NEON)
-  if (GFp_is_NEON_capable()) {
-    static const uint8_t kMongomeryBasePoint[32] = {9};
-    GFp_x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
-    return;
-  }
-#endif
-
-  uint8_t e[32];
-  memcpy(e, private_key, 32);
-  GFp_x25519_scalar_mask(e);
-
-  ge_p3 A;
-  GFp_x25519_ge_scalarmult_base(&A, e);
-
-  /* We only need the u-coordinate of the curve25519 point. The map is
-   * u=(y+1)/(1-y). Since y=Y/Z, this gives u=(Z+Y)/(Z-Y). */
-  fe zplusy, zminusy, zminusy_inv;
-  fe_add(zplusy, A.Z, A.Y);
-  fe_sub(zminusy, A.Z, A.Y);
-  GFp_fe_invert(zminusy_inv, zminusy);
-  GFp_fe_mul(zplusy, zplusy, zminusy_inv);
-  GFp_fe_tobytes(out_public_value, zplusy);
 }
 
 #endif  /* BORINGSSL_X25519_X86_64 */
